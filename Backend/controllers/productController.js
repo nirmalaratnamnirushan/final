@@ -2,117 +2,93 @@ const Product = require("../models/productModel"); // Import the Product model f
 const path = require("path"); // Import the path module for working with file and directory paths
 const fs = require("fs"); // Import the file system module for handling files
 
+// Hardcoded base URL for image storage
+const imageBaseUrl = '../uploads'; // Replace with your actual domain or server URL
+
 // Add Product
-exports.addProduct = async (req, res) => {
-  try {
-    const { name, quantity, price } = req.body; // Destructure product details from the request body
-    const image = req.file ? req.file.filename : null; // If an image file is uploaded, get its filename
+exports.addProduct = async(req, res) => {
+    try {
+        const { name, quantity, price } = req.body;
+        const image = req.file ? `${imageBaseUrl}/${req.file.filename}` : null; // Store full image path
 
-    // Create a new product in the database
-    const product = await Product.create({ name, quantity, price, image });
+        const product = await Product.create({ name, quantity, price, image });
 
-    // Respond with the created product
-    res.status(201).json(product);
-  } catch (error) {
-    // Handle errors during product creation
-    res.status(500).json({ message: error.message });
-  }
+        res.status(201).json(product);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 // Get All Products
-exports.getProducts = async (req, res) => {
-  try {
-    // Retrieve all products from the database
-    const products = await Product.find();
+exports.getProducts = async(req, res) => {
+    try {
+        const products = await Product.find();
 
-    // Respond with the list of products
-    res.status(200).json(products);
-  } catch (error) {
-    // Handle errors during retrieval
-    res.status(500).json({ message: error.message });
-  }
+        res.status(200).json(products);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 // Get Single Product by ID
-exports.getProductById = async (req, res) => {
-  try {
-    // Find a product by its ID (provided in the request parameters)
-    const product = await Product.findById(req.params.id);
+exports.getProductById = async(req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
 
-    // If no product is found, return a 404 error
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        res.status(200).json(product);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-
-    // Respond with the found product
-    res.status(200).json(product);
-  } catch (error) {
-    // Handle errors during retrieval
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // Update Product
-exports.updateProduct = async (req, res) => {
-  try {
-    const { name, quantity, price } = req.body; // Destructure updated product details from the request body
-    const image = req.file ? req.file.filename : null; // If an updated image is uploaded, get its filename
+exports.updateProduct = async(req, res) => {
+    try {
+        const { name, quantity, price } = req.body;
+        const image = req.file ? `${imageBaseUrl}/${req.file.filename}` : null;
 
-    // Find the product by its ID
-    const product = await Product.findById(req.params.id);
+        const product = await Product.findById(req.params.id);
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
 
-    // If no product is found, return a 404 error
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+        product.name = name || product.name;
+        product.quantity = quantity || product.quantity;
+        product.price = price || product.price;
+        if (image) {
+            product.image = image;
+        }
+
+        const updatedProduct = await product.save();
+        res.status(200).json(updatedProduct);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-
-    // Update the product's fields if provided, otherwise retain the existing values
-    product.name = name || product.name;        // while update if the name is changed then the newname is assigned to the product.name other wise it is taking the old name
-    product.quantity = quantity || product.quantity;
-    product.price = price || product.price;
-    if (image) {
-      product.image = image; // Update the product's image if a new one is provided
-    }
-
-    // Save the updated product to the database
-    const updatedProduct = await product.save();
-
-    // Respond with the updated product
-    res.status(200).json(updatedProduct);
-  } catch (error) {
-    // Handle errors during the update
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // Delete Product
-exports.deleteProduct = async (req, res) => {
-  try {
-    // Find the product by its ID
-    const product = await Product.findById(req.params.id);
+exports.deleteProduct = async(req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
 
-    // If no product is found, return a 404 error
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    // Check if the product has an associated image and delete the file
-    if (product.image) {
-      const imagePath = path.join(__dirname, "../uploads", product.image); // Construct the path to the image
-      fs.unlink(imagePath, (err) => {
-        if (err) {
-          console.error("Error deleting image:", err); // Log any errors while deleting the image
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
         }
-      });
+
+        if (product.image) {
+            const imagePath = path.join(__dirname, "../uploads", path.basename(product.image));
+            fs.unlink(imagePath, (err) => {
+                if (err) console.error("Error deleting image:", err);
+            });
+        }
+
+        await Product.deleteOne({ _id: req.params.id });
+        res.status(200).json({ message: "Product and its image deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-
-    // Delete the product from the database
-    await Product.deleteOne({ _id: req.params.id });
-
-    // Respond with a success message
-    res.status(200).json({ message: "Product and its image deleted successfully" });
-  } catch (error) {
-    // Handle errors during deletion
-    res.status(500).json({ message: error.message });
-  }
 };

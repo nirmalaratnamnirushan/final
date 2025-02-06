@@ -1,16 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import axios from "axios";
-import { toast } from "react-toastify"; // Import toast notifications
-import "react-toastify/dist/ReactToastify.css"; // Import toast styles
-
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const EditProduct = () => {
-  const { id } = useParams(); // Get product ID from URL params
-  const navigate = useNavigate(); // Navigation hook for redirecting
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-  // State to manage form data
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -19,17 +16,15 @@ const EditProduct = () => {
     old_image: "",
   });
 
-  const [validationErrors, setValidationErrors] = useState({}); // State to track validation errors
-  const [isLoading, setIsLoading] = useState(true); // Loading state while fetching product data
-  const baseURL = "http://localhost:5000/uploads/"; // Base URL for images
+  const [validationErrors, setValidationErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const baseURL = "http://localhost:5000/uploads/";
 
-  // Fetch product details when component mounts
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         const response = await axios.get(`http://localhost:5000/api/products/${id}`);
         
-        // Populate form fields with existing product data
         setFormData({
           name: response.data.name,
           price: response.data.price,
@@ -41,14 +36,13 @@ const EditProduct = () => {
       } catch (error) {
         toast.error("Unable to fetch product details. Please try again.");
       } finally {
-        setIsLoading(false); // Stop loading state
+        setIsLoading(false);
       }
     };
 
     fetchProduct();
   }, [id]);
 
-  // Handle form input changes
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
     setFormData((prevData) => ({
@@ -57,25 +51,21 @@ const EditProduct = () => {
     }));
   };
 
-  // Handle form submission
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const errors = {}; // Initialize validation errors object
+    const errors = {};
 
-    // Validate form fields
     if (!formData.name.trim()) errors.name = "Name is required.";
     if (!formData.price || formData.price <= 0) errors.price = "Price must be a positive number.";
     if (!formData.quantity || formData.quantity < 0) errors.quantity = "Quantity must be a non-negative number.";
 
-    // If there are validation errors, update state and stop submission
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       toast.warn("Please fix the validation errors before submitting.");
       return;
     }
 
-    // Create FormData object for API request
     const formDataObj = new FormData();
     formDataObj.append("name", formData.name);
     formDataObj.append("price", formData.price);
@@ -86,23 +76,20 @@ const EditProduct = () => {
     formDataObj.append("old_image", formData.old_image);
 
     try {
-      // Send PUT request to update product
       await axios.put(`http://localhost:5000/api/products/${id}`, formDataObj, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Show success toast for 2 seconds
-      toast.success("Product updated successfully!", {
-        autoClose: 2000, // 2 seconds
-      });
+      toast.success("Product updated successfully!", { autoClose: 2000 });
 
-      navigate("/admin/products"); // Redirect to product list
+      setTimeout(() => {
+        navigate("/admin/products");
+      }, 2000);
     } catch (error) {
       toast.error("Unable to update the product. Please try again.");
     }
   };
 
-  // Show loading indicator while fetching product data
   if (isLoading) {
     return <div className="text-center mt-5">Loading...</div>;
   }
@@ -163,7 +150,6 @@ const EditProduct = () => {
                   name="image"
                   onChange={handleChange}
                 />
-                {/* Show current product image */}
                 {formData.old_image && (
                   <img
                     src={`${baseURL}${formData.old_image}`}
@@ -191,8 +177,9 @@ const EditProduct = () => {
           </div>
         </div>
       </div>
+      
       {/* Toast Container to display notifications */}
-      <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} />
+      <ToastContainer position="top-center" autoClose={2000} hideProgressBar={false} />
     </div>
   );
 };
